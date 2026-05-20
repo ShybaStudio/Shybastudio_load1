@@ -1,0 +1,1424 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Forest Survival — ShybaStudio</title>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700;900&family=Cinzel+Decorative:wght@400;700&family=IM+Fell+English:ital@0;1&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
+
+  :root {
+    --gold: #c8922a;
+    --gold-light: #e8b84a;
+    --gold-dim: #7a5518;
+    --ember: #e06020;
+    --ember-dim: #803010;
+    --dark: #04080300;
+    --text-bright: #f0dfa0;
+    --text-mid: #a08040;
+    --text-dim: #503a18;
+  }
+
+  html, body {
+    width: 100%; height: 100%;
+    overflow: hidden;
+    background: #000;
+    cursor: none;
+  }
+
+  #app {
+    width: 100vw; height: 100vh;
+    position: relative;
+    overflow: hidden;
+    font-family: 'Cinzel', serif;
+  }
+
+  /* === SCENE CANVAS === */
+  #scene-canvas {
+    position: absolute;
+    inset: 0;
+    width: 100%; height: 100%;
+  }
+
+  /* === DARKNESS CANVAS === */
+  #dark-canvas {
+    position: absolute;
+    inset: 0;
+    width: 100%; height: 100%;
+    pointer-events: none;
+    z-index: 5;
+  }
+
+  /* === CURSOR === */
+  #cursor {
+    position: absolute;
+    width: 8px; height: 8px;
+    background: #f0c860;
+    border-radius: 50%;
+    pointer-events: none;
+    z-index: 100;
+    transform: translate(-50%, -50%);
+    transition: transform 0.06s;
+  }
+  #cursor-ring {
+    position: absolute;
+    width: 28px; height: 28px;
+    border: 1px solid rgba(200,150,40,0.4);
+    border-radius: 50%;
+    pointer-events: none;
+    z-index: 100;
+    transform: translate(-50%, -50%);
+    transition: transform 0.12s, width 0.2s, height 0.2s;
+  }
+
+  /* === INTRO SCREEN === */
+  #intro {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    z-index: 20;
+    transition: opacity 1.2s ease;
+  }
+  #intro.fade-out { opacity: 0; pointer-events: none; }
+
+  .studio-name {
+    font-family: 'Cinzel Decorative', serif;
+    font-size: clamp(28px, 5vw, 56px);
+    font-weight: 700;
+    color: var(--gold-light);
+    letter-spacing: 0.15em;
+    animation: logoReveal 2.5s cubic-bezier(.16,1,.3,1) forwards;
+    opacity: 0;
+    text-shadow: 0 0 40px rgba(200,140,40,0.4);
+  }
+  .studio-presents {
+    font-family: 'IM Fell English', serif;
+    font-style: italic;
+    font-size: clamp(12px, 1.5vw, 16px);
+    color: var(--text-mid);
+    letter-spacing: 0.3em;
+    margin-top: 12px;
+    opacity: 0;
+    animation: fadeUp 1s ease 2.2s forwards;
+  }
+  .hint {
+    position: absolute;
+    bottom: 60px;
+    font-family: 'IM Fell English', serif;
+    font-style: italic;
+    font-size: clamp(11px, 1.2vw, 13px);
+    color: var(--text-dim);
+    letter-spacing: 0.25em;
+    opacity: 0;
+    animation: pulse 2s ease 3.2s infinite;
+  }
+
+  /* === MENU === */
+  #menu {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    z-index: 20;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 1s ease;
+  }
+  #menu.visible { opacity: 1; pointer-events: all; }
+
+  .game-eyebrow {
+    font-family: 'IM Fell English', serif;
+    font-style: italic;
+    font-size: clamp(11px, 1.2vw, 14px);
+    color: var(--text-mid);
+    letter-spacing: 0.35em;
+    margin-bottom: 10px;
+    opacity: 0;
+    animation: fadeUp 0.8s ease 0.1s forwards;
+  }
+  .game-title {
+    font-family: 'Cinzel Decorative', serif;
+    font-size: clamp(32px, 6vw, 72px);
+    font-weight: 700;
+    color: var(--text-bright);
+    letter-spacing: 0.08em;
+    text-align: center;
+    line-height: 1.1;
+    opacity: 0;
+    animation: fadeUp 0.8s ease 0.3s forwards;
+    text-shadow: 0 0 60px rgba(200,140,40,0.25);
+  }
+  .game-tagline {
+    font-family: 'IM Fell English', serif;
+    font-style: italic;
+    font-size: clamp(13px, 1.5vw, 17px);
+    color: var(--gold-dim);
+    letter-spacing: 0.2em;
+    margin-top: 8px;
+    margin-bottom: 48px;
+    opacity: 0;
+    animation: fadeUp 0.8s ease 0.5s forwards;
+  }
+
+  .divider {
+    width: 220px;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--gold-dim), transparent);
+    margin: 0 auto 36px;
+    opacity: 0;
+    animation: fadeUp 0.8s ease 0.6s forwards;
+  }
+
+  .menu-nav {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .menu-btn {
+    position: relative;
+    background: transparent;
+    border: none;
+    color: var(--text-mid);
+    font-family: 'Cinzel', serif;
+    font-size: clamp(12px, 1.4vw, 15px);
+    font-weight: 600;
+    letter-spacing: 0.35em;
+    text-transform: uppercase;
+    padding: 10px 52px;
+    cursor: none;
+    transition: color 0.25s, letter-spacing 0.3s;
+    opacity: 0;
+  }
+  .menu-btn::before, .menu-btn::after {
+    content: '';
+    position: absolute;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    width: 0; height: 1px;
+    background: var(--gold);
+    transition: width 0.3s ease;
+  }
+  .menu-btn::before { top: 0; }
+  .menu-btn::after { top: 100%; }
+  .menu-btn:hover { color: var(--gold-light); letter-spacing: 0.45em; }
+  .menu-btn:hover::before, .menu-btn:hover::after { width: 80%; }
+  .menu-btn.primary {
+    color: var(--gold-light);
+    font-size: clamp(14px, 1.6vw, 18px);
+    padding: 14px 64px;
+    border: 1px solid rgba(200,140,40,0.3);
+    letter-spacing: 0.4em;
+  }
+  .menu-btn.primary:hover { border-color: var(--gold); }
+
+  .menu-btn:nth-child(1) { animation: fadeUp 0.6s ease 0.7s forwards; }
+  .menu-btn:nth-child(2) { animation: fadeUp 0.6s ease 0.85s forwards; }
+  .menu-btn:nth-child(3) { animation: fadeUp 0.6s ease 1s forwards; }
+  .menu-btn:nth-child(4) { animation: fadeUp 0.6s ease 1.15s forwards; }
+
+  .footer {
+    position: absolute;
+    bottom: 28px;
+    font-family: 'IM Fell English', serif;
+    font-style: italic;
+    font-size: 11px;
+    color: var(--text-dim);
+    letter-spacing: 0.2em;
+    opacity: 0;
+    animation: fadeUp 0.6s ease 1.4s forwards;
+  }
+
+  /* === KEYFRAMES === */
+  @keyframes logoReveal {
+    0%   { opacity:0; letter-spacing:0.5em; clip-path:inset(0 50% 0 50%); }
+    60%  { opacity:1; clip-path:inset(0 0% 0 0%); }
+    100% { opacity:1; letter-spacing:0.15em; }
+  }
+  @keyframes fadeUp {
+    from { opacity:0; transform:translateY(14px); }
+    to   { opacity:1; transform:translateY(0); }
+  }
+  @keyframes pulse {
+    0%,100% { opacity:0; }
+    50%     { opacity:0.6; }
+  }
+
+  /* === VIGNETTE === */
+  #vignette {
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(ellipse at center, transparent 40%, rgba(0,0,0,0.7) 100%);
+    pointer-events: none;
+    z-index: 4;
+  }
+
+  /* === AMBIENT PARTICLES === */
+  #particles {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    z-index: 3;
+  }
+
+  /* === SCANLINES === */
+  #grain {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    z-index: 6;
+    opacity: 0.03;
+    background-image: repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 2px,
+      rgba(0,0,0,0.3) 2px,
+      rgba(0,0,0,0.3) 4px
+    );
+  }
+
+  /* === CREDITS OVERLAY === */
+  #credits {
+    position: absolute;
+    inset: 0;
+    z-index: 50;
+    background: #000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.8s ease;
+  }
+  #credits.active { opacity: 1; pointer-events: all; }
+
+  #credits-canvas {
+    position: absolute;
+    inset: 0;
+    width: 100%; height: 100%;
+  }
+
+  #credits-content {
+    position: relative;
+    z-index: 2;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    width: 100%; height: 100%;
+  }
+
+  .credits-back {
+    position: absolute;
+    top: 32px; left: 40px;
+    background: transparent;
+    border: 1px solid rgba(200,140,40,0.25);
+    color: var(--text-dim);
+    font-family: 'Cinzel', serif;
+    font-size: 11px;
+    letter-spacing: 0.3em;
+    text-transform: uppercase;
+    padding: 8px 20px;
+    cursor: none;
+    transition: color 0.2s, border-color 0.2s;
+  }
+  .credits-back:hover { color: var(--gold-light); border-color: var(--gold); }
+
+  /* Logo animation container */
+  #logo-scene {
+    position: relative;
+    width: min(540px, 90vw);
+    height: min(320px, 50vh);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+  }
+
+  /* The big S emblem */
+  .emblem-wrap {
+    position: relative;
+    width: 110px; height: 110px;
+    margin-bottom: 28px;
+    opacity: 0;
+  }
+  .emblem-wrap.play { animation: emblemIn 1.4s cubic-bezier(.16,1,.3,1) 0.3s forwards; }
+
+  .emblem-ring {
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    border: 1px solid rgba(200,140,40,0);
+    animation: none;
+  }
+  .emblem-ring.play {
+    animation: ringExpand 2s ease 0.3s forwards;
+  }
+  .emblem-ring-2 {
+    position: absolute;
+    inset: -12px;
+    border-radius: 50%;
+    border: 0.5px solid rgba(200,140,40,0);
+  }
+  .emblem-ring-2.play {
+    animation: ringExpand2 2.4s ease 0.5s forwards;
+  }
+
+  .emblem-inner {
+    width: 100%; height: 100%;
+    border-radius: 50%;
+    background: rgba(10,6,2,0.9);
+    border: 1px solid rgba(200,140,40,0.4);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    overflow: hidden;
+  }
+  .emblem-letter {
+    font-family: 'Cinzel Decorative', serif;
+    font-size: 52px;
+    font-weight: 900;
+    color: var(--gold-light);
+    line-height: 1;
+    opacity: 0;
+    transform: scale(1.4);
+    position: relative;
+    z-index: 2;
+  }
+  .emblem-letter.play {
+    animation: letterBurst 1s cubic-bezier(.16,1,.3,1) 0.8s forwards;
+  }
+  .emblem-glow {
+    position: absolute;
+    inset: -50%;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(200,140,40,0.15) 0%, transparent 70%);
+    opacity: 0;
+  }
+  .emblem-glow.play { animation: glowPulse 2s ease 0.8s infinite; }
+
+  /* Scanline sweep */
+  .emblem-scan {
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    overflow: hidden;
+    pointer-events: none;
+  }
+  .emblem-scan::after {
+    content: '';
+    position: absolute;
+    left: 0; right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, rgba(200,140,40,0.6), transparent);
+    top: -4px;
+    opacity: 0;
+  }
+  .emblem-scan.play::after {
+    animation: scanLine 1.2s ease 0.5s forwards;
+  }
+
+  /* Studio name */
+  .credits-studio {
+    font-family: 'Cinzel Decorative', serif;
+    font-size: clamp(24px, 4vw, 42px);
+    font-weight: 700;
+    color: var(--gold-light);
+    letter-spacing: 0.2em;
+    opacity: 0;
+    white-space: nowrap;
+  }
+  .credits-studio.play {
+    animation: studioReveal 1.6s cubic-bezier(.16,1,.3,1) 1.4s forwards;
+  }
+
+  /* Tagline under name */
+  .credits-tagline {
+    font-family: 'IM Fell English', serif;
+    font-style: italic;
+    font-size: clamp(11px, 1.2vw, 14px);
+    color: var(--text-dim);
+    letter-spacing: 0.4em;
+    margin-top: 6px;
+    opacity: 0;
+  }
+  .credits-tagline.play { animation: fadeUp 0.8s ease 2.6s forwards; }
+
+  /* Separator ornament */
+  .credits-ornament {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin: 28px 0;
+    opacity: 0;
+  }
+  .credits-ornament.play { animation: fadeUp 0.6s ease 3s forwards; }
+  .orn-line {
+    width: 80px; height: 0.5px;
+    background: linear-gradient(90deg, transparent, var(--gold-dim));
+  }
+  .orn-line.right { background: linear-gradient(90deg, var(--gold-dim), transparent); }
+  .orn-diamond {
+    width: 6px; height: 6px;
+    background: var(--gold-dim);
+    transform: rotate(45deg);
+  }
+
+  /* Credits list */
+  .credits-list {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 14px;
+    opacity: 0;
+  }
+  .credits-list.play { animation: fadeUp 0.8s ease 3.2s forwards; }
+  .credit-row { text-align: center; }
+  .credit-role {
+    font-family: 'Cinzel', serif;
+    font-size: clamp(9px, 0.9vw, 11px);
+    color: var(--text-dim);
+    letter-spacing: 0.35em;
+    text-transform: uppercase;
+    margin-bottom: 2px;
+  }
+  .credit-name {
+    font-family: 'IM Fell English', serif;
+    font-size: clamp(13px, 1.4vw, 17px);
+    color: var(--text-mid);
+    letter-spacing: 0.1em;
+  }
+  .credit-name.highlight {
+    color: var(--gold-light);
+    font-size: clamp(15px, 1.6vw, 20px);
+  }
+
+  .credits-footer-txt {
+    position: absolute;
+    bottom: 28px;
+    font-family: 'IM Fell English', serif;
+    font-style: italic;
+    font-size: 11px;
+    color: var(--text-dim);
+    letter-spacing: 0.2em;
+    opacity: 0;
+  }
+  .credits-footer-txt.play { animation: fadeUp 0.6s ease 4s forwards; }
+
+  /* === CREDITS KEYFRAMES === */
+  @keyframes emblemIn {
+    from { opacity:0; transform: scale(0.6) rotate(-15deg); }
+    to   { opacity:1; transform: scale(1) rotate(0deg); }
+  }
+  @keyframes letterBurst {
+    from { opacity:0; transform: scale(1.4); }
+    to   { opacity:1; transform: scale(1); }
+  }
+  @keyframes studioReveal {
+    0%   { opacity:0; letter-spacing:0.6em; clip-path: inset(0 50% 0 50%); }
+    50%  { opacity:1; clip-path: inset(0 0% 0 0%); }
+    100% { opacity:1; letter-spacing:0.2em; }
+  }
+  @keyframes ringExpand {
+    0%   { border-color: rgba(200,140,40,0); transform: scale(0.5); }
+    40%  { border-color: rgba(200,140,40,0.6); }
+    100% { border-color: rgba(200,140,40,0.25); transform: scale(1); }
+  }
+  @keyframes ringExpand2 {
+    0%   { border-color: rgba(200,140,40,0); transform: scale(0.4); }
+    40%  { border-color: rgba(200,140,40,0.3); }
+    100% { border-color: rgba(200,140,40,0.1); transform: scale(1); }
+  }
+  @keyframes glowPulse {
+    0%,100% { opacity:0.4; transform: scale(0.9); }
+    50%     { opacity:1;   transform: scale(1.1); }
+  }
+  @keyframes scanLine {
+    0%   { top:-4px; opacity:0; }
+    10%  { opacity:1; }
+    90%  { opacity:0.8; }
+    100% { top:calc(100% + 4px); opacity:0; }
+  }
+
+  /* ===================== BOUTIQUE ===================== */
+  #shop {
+    position: absolute; inset: 0; z-index: 50; background: #050301;
+    opacity: 0; pointer-events: none; transition: opacity 0.7s ease;
+    display: flex; flex-direction: column;
+  }
+  #shop.active { opacity: 1; pointer-events: all; }
+  #shop::before {
+    content: ''; position: absolute; inset: 0; z-index: 0;
+    background-image: repeating-linear-gradient(0deg, transparent, transparent 3px, rgba(0,0,0,0.12) 3px, rgba(0,0,0,0.12) 4px);
+  }
+  #shop-header {
+    position: relative; z-index: 2;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 22px 40px 18px;
+    border-bottom: 0.5px solid rgba(200,140,40,0.15);
+  }
+  .shop-title-wrap { display: flex; flex-direction: column; gap: 2px; }
+  .shop-eyebrow { font-family: 'IM Fell English', serif; font-style: italic; font-size: 11px; color: var(--text-dim); letter-spacing: 0.35em; }
+  .shop-title { font-family: 'Cinzel Decorative', serif; font-size: clamp(18px,2.5vw,26px); font-weight: 700; color: var(--gold-light); letter-spacing: 0.1em; }
+  .shop-robux-bal {
+    display: flex; align-items: center; gap: 8px;
+    background: rgba(20,12,4,0.8); border: 0.5px solid rgba(200,140,40,0.3);
+    border-radius: 6px; padding: 7px 16px;
+  }
+  .robux-icon {
+    width: 18px; height: 18px; background: #00b06f; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 10px; font-weight: 900; color: #fff; font-family: Arial,sans-serif; flex-shrink: 0;
+  }
+  .robux-amount { font-family: 'Cinzel',serif; font-size: 14px; font-weight: 700; color: var(--gold-light); letter-spacing: 0.1em; }
+  .robux-label { font-family: 'IM Fell English',serif; font-style: italic; font-size: 11px; color: var(--text-dim); }
+  .shop-back {
+    background: transparent; border: 0.5px solid rgba(200,140,40,0.2); color: var(--text-dim);
+    font-family: 'Cinzel',serif; font-size: 10px; letter-spacing: 0.3em; text-transform: uppercase;
+    padding: 7px 16px; cursor: none; border-radius: 4px; transition: color 0.2s, border-color 0.2s;
+  }
+  .shop-back:hover { color: var(--gold-light); border-color: var(--gold); }
+  #shop-tabs {
+    position: relative; z-index: 2; display: flex;
+    padding: 0 40px; border-bottom: 0.5px solid rgba(200,140,40,0.1);
+  }
+  .shop-tab {
+    background: transparent; border: none; border-bottom: 2px solid transparent;
+    color: var(--text-dim); font-family: 'Cinzel',serif; font-size: 10px;
+    letter-spacing: 0.3em; text-transform: uppercase; padding: 11px 20px;
+    cursor: none; transition: color 0.2s, border-color 0.2s;
+  }
+  .shop-tab:hover { color: var(--text-mid); }
+  .shop-tab.active { color: var(--gold-light); border-bottom-color: var(--gold); }
+  #shop-body {
+    position: relative; z-index: 2; flex: 1; overflow-y: auto;
+    padding: 24px 40px 28px;
+    scrollbar-width: thin; scrollbar-color: rgba(200,140,40,0.2) transparent;
+  }
+  #shop-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px,1fr)); gap: 14px; }
+  .shop-card {
+    background: rgba(10,6,1,0.9); border: 0.5px solid rgba(200,140,40,0.13);
+    border-radius: 8px; overflow: hidden; cursor: none;
+    transition: border-color 0.25s, transform 0.2s;
+    position: relative; animation: shopSlideIn 0.4s ease both;
+  }
+  .shop-card:hover { border-color: rgba(200,140,40,0.5); transform: translateY(-3px); }
+  .shop-card.owned { border-color: rgba(100,180,60,0.3); }
+  .card-badge {
+    position: absolute; top: 8px; right: 8px;
+    font-family: 'Cinzel',serif; font-size: 8px; letter-spacing: 0.15em;
+    text-transform: uppercase; padding: 2px 7px; border-radius: 3px; z-index: 3;
+  }
+  .badge-new { background: rgba(200,80,20,0.85); color: #f0b080; }
+  .badge-owned { background: rgba(40,120,40,0.75); color: #90e090; }
+  .badge-popular { background: rgba(140,80,200,0.75); color: #d0a0f0; }
+  .badge-sale { background: rgba(200,160,20,0.85); color: #fff0a0; }
+  .card-preview {
+    width: 100%; aspect-ratio: 1;
+    display: flex; align-items: center; justify-content: center;
+    background: rgba(6,4,1,0.95); position: relative; overflow: hidden;
+  }
+  .card-preview-icon {
+    font-size: 50px; position: relative; z-index: 2;
+    filter: drop-shadow(0 0 10px rgba(200,140,40,0.3));
+    transition: transform 0.3s;
+  }
+  .shop-card:hover .card-preview-icon { transform: scale(1.12) rotate(-4deg); }
+  .card-preview-glow {
+    position: absolute; inset: 0;
+    background: radial-gradient(circle at 50% 65%, rgba(200,120,20,0.1) 0%, transparent 65%);
+  }
+  .card-info { padding: 11px 13px 13px; }
+  .card-name { font-family: 'Cinzel',serif; font-size: 12px; font-weight: 600; color: var(--text-bright); letter-spacing: 0.05em; margin-bottom: 3px; }
+  .card-desc { font-family: 'IM Fell English',serif; font-style: italic; font-size: 11px; color: var(--text-dim); margin-bottom: 11px; line-height: 1.4; }
+  .card-footer { display: flex; align-items: center; justify-content: space-between; }
+  .card-price { display: flex; align-items: center; gap: 5px; }
+  .price-icon {
+    width: 15px; height: 15px; background: #00b06f; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 8px; font-weight: 900; color: #fff; font-family: Arial,sans-serif;
+  }
+  .price-val { font-family: 'Cinzel',serif; font-size: 13px; font-weight: 700; color: var(--gold-light); }
+  .price-free { font-family: 'Cinzel',serif; font-size: 11px; color: #70c070; letter-spacing: 0.1em; }
+  .buy-btn {
+    font-family: 'Cinzel',serif; font-size: 9px; font-weight: 600;
+    letter-spacing: 0.2em; text-transform: uppercase; padding: 5px 12px;
+    border-radius: 4px; cursor: none; border: none; transition: all 0.2s;
+  }
+  .buy-btn.can-buy { background: rgba(200,140,40,0.14); border: 0.5px solid rgba(200,140,40,0.4); color: var(--gold-light); }
+  .buy-btn.can-buy:hover { background: rgba(200,140,40,0.28); }
+  .buy-btn.is-owned { background: rgba(40,100,40,0.18); border: 0.5px solid rgba(60,160,60,0.3); color: #70c070; pointer-events: none; }
+  /* Modal */
+  #shop-modal {
+    position: absolute; inset: 0; z-index: 60;
+    background: rgba(0,0,0,0.78);
+    display: flex; align-items: center; justify-content: center;
+    opacity: 0; pointer-events: none; transition: opacity 0.22s;
+  }
+  #shop-modal.open { opacity: 1; pointer-events: all; }
+  .modal-box {
+    background: #09060100; border: 0.5px solid rgba(200,140,40,0.45);
+    border-radius: 10px; padding: 30px 34px; max-width: 320px; width: 90%; text-align: center;
+    background: #090601;
+  }
+  .modal-icon { font-size: 40px; margin-bottom: 12px; }
+  .modal-title { font-family: 'Cinzel',serif; font-size: 15px; color: var(--text-bright); letter-spacing: 0.1em; margin-bottom: 5px; }
+  .modal-desc { font-family: 'IM Fell English',serif; font-style: italic; font-size: 12px; color: var(--text-dim); margin-bottom: 18px; line-height: 1.6; }
+  .modal-price-row { display: flex; align-items: center; justify-content: center; gap: 7px; margin-bottom: 22px; }
+  .modal-price-icon {
+    width: 20px; height: 20px; background: #00b06f; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 10px; font-weight: 900; color: #fff; font-family: Arial,sans-serif;
+  }
+  .modal-price-val { font-family: 'Cinzel',serif; font-size: 20px; font-weight: 700; color: var(--gold-light); }
+  .modal-price-label { font-family: 'IM Fell English',serif; font-style: italic; font-size: 13px; color: var(--text-dim); }
+  .modal-btns { display: flex; gap: 10px; justify-content: center; }
+  .modal-confirm {
+    background: rgba(200,140,40,0.18); border: 0.5px solid rgba(200,140,40,0.5);
+    color: var(--gold-light); font-family: 'Cinzel',serif; font-size: 10px;
+    letter-spacing: 0.25em; text-transform: uppercase; padding: 9px 22px;
+    border-radius: 5px; cursor: none; transition: background 0.2s;
+  }
+  .modal-confirm:hover { background: rgba(200,140,40,0.32); }
+  .modal-cancel {
+    background: transparent; border: 0.5px solid rgba(200,140,40,0.15);
+    color: var(--text-dim); font-family: 'Cinzel',serif; font-size: 10px;
+    letter-spacing: 0.25em; text-transform: uppercase; padding: 9px 22px;
+    border-radius: 5px; cursor: none; transition: color 0.2s;
+  }
+  .modal-cancel:hover { color: var(--text-mid); }
+  /* Success toast */
+  #shop-toast {
+    position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%) translateY(20px);
+    background: rgba(40,100,40,0.9); border: 0.5px solid rgba(80,180,80,0.4);
+    border-radius: 6px; padding: 10px 24px;
+    font-family: 'Cinzel',serif; font-size: 11px; letter-spacing: 0.2em;
+    color: #a0e8a0; opacity: 0; pointer-events: none; z-index: 70;
+    transition: opacity 0.3s, transform 0.3s;
+  }
+  #shop-toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+  @keyframes shopSlideIn { from { opacity:0; transform:translateY(16px); } to { opacity:1; transform:translateY(0); } }
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="cursor"></div>
+  <div id="cursor-ring"></div>
+
+  <canvas id="scene-canvas"></canvas>
+  <canvas id="dark-canvas"></canvas>
+  <div id="vignette"></div>
+  <div id="grain"></div>
+
+  <canvas id="particles" style="z-index:3"></canvas>
+
+  <div id="intro">
+    <div class="studio-name">ShybaStudio</div>
+    <div class="studio-presents">presents</div>
+    <div class="hint">— déplacez la souris pour continuer —</div>
+  </div>
+
+  <div id="menu">
+    <div class="game-eyebrow">ShybaStudio presents</div>
+    <div class="game-title">Forest<br>Survival</div>
+    <div class="game-tagline">Survivez dans les ténèbres</div>
+    <div class="divider"></div>
+    <nav class="menu-nav">
+      <button class="menu-btn primary">&#9658;&nbsp;&nbsp;Jouer</button>
+      <button class="menu-btn" onclick="window.openShop()">Boutique</button>
+      <button class="menu-btn" id="btn-credits">Crédits</button>
+      <button class="menu-btn">Quitter</button>
+    </nav>
+    <div class="footer">Forest Survival &mdash; v1.0.0 &mdash; ShybaStudio © 2025</div>
+  </div>
+
+  <div id="credits">
+    <canvas id="credits-canvas"></canvas>
+    <div id="credits-content">
+      <button class="credits-back" id="btn-back">&#8592;&nbsp; Retour</button>
+      <div id="logo-scene">
+        <div class="emblem-wrap" id="emblem">
+          <div class="emblem-ring" id="ering1"></div>
+          <div class="emblem-ring-2" id="ering2"></div>
+          <div class="emblem-inner">
+            <div class="emblem-glow" id="eglow"></div>
+            <div class="emblem-scan" id="escan"></div>
+            <span class="emblem-letter" id="eletter">S</span>
+          </div>
+        </div>
+        <div class="credits-studio" id="cstudio">ShybaStudio</div>
+        <div class="credits-tagline" id="ctagline">Indie Game Studio &mdash; Est. 2025</div>
+        <div class="credits-ornament" id="cornament">
+          <div class="orn-line"></div>
+          <div class="orn-diamond"></div>
+          <div class="orn-diamond" style="opacity:0.4;transform:rotate(45deg) scale(0.6)"></div>
+          <div class="orn-diamond"></div>
+          <div class="orn-line right"></div>
+        </div>
+        <div class="credits-list" id="clist">
+          <div class="credit-row">
+            <div class="credit-role">Fondateur &amp; Développeur principal</div>
+            <div class="credit-name highlight">ShybaStudio</div>
+          </div>
+          <div class="credit-row">
+            <div class="credit-role">Game Design &amp; Direction artistique</div>
+            <div class="credit-name">ShybaStudio Team</div>
+          </div>
+          <div class="credit-row">
+            <div class="credit-role">Moteur</div>
+            <div class="credit-name">Roblox Studio &mdash; Luau</div>
+          </div>
+        </div>
+      </div>
+      <div class="credits-footer-txt" id="cfooter">Forest Survival &mdash; v1.0.0 &mdash; Tous droits réservés ShybaStudio © 2025</div>
+    </div>
+  </div>
+
+  <!-- BOUTIQUE OVERLAY -->
+  <div id="shop">
+    <div id="shop-header">
+      <div class="shop-title-wrap">
+        <span class="shop-eyebrow">Forest Survival</span>
+        <span class="shop-title">Boutique</span>
+      </div>
+      <div class="shop-robux-bal">
+        <div class="robux-icon">R$</div>
+        <span class="robux-amount" id="bal-display">1 200</span>
+        <span class="robux-label">Robux</span>
+      </div>
+      <button class="shop-back" id="btn-shop-back">&#8592; Retour</button>
+    </div>
+    <div id="shop-tabs">
+      <button class="shop-tab active" data-cat="all">Tout</button>
+      <button class="shop-tab" data-cat="armes">Armes</button>
+      <button class="shop-tab" data-cat="armures">Armures</button>
+      <button class="shop-tab" data-cat="outils">Outils</button>
+      <button class="shop-tab" data-cat="cosmétiques">Cosmétiques</button>
+    </div>
+    <div id="shop-body">
+      <div id="shop-grid"></div>
+    </div>
+    <div id="shop-modal">
+      <div class="modal-box">
+        <div class="modal-icon" id="modal-icon">🗡️</div>
+        <div class="modal-title" id="modal-name">Épée en fer</div>
+        <div class="modal-desc" id="modal-desc">Une lame forgée dans la forêt profonde.</div>
+        <div class="modal-price-row">
+          <div class="modal-price-icon">R$</div>
+          <span class="modal-price-val" id="modal-price">150</span>
+          <span class="modal-price-label">Robux</span>
+        </div>
+        <div class="modal-btns">
+          <button class="modal-confirm" id="modal-confirm">Acheter</button>
+          <button class="modal-cancel" id="modal-cancel">Annuler</button>
+        </div>
+      </div>
+    </div>
+    <div id="shop-toast">Achat effectué !</div>
+  </div>
+
+</div>
+
+<script>
+(function(){
+  const app = document.getElementById('app');
+  const sceneC = document.getElementById('scene-canvas');
+  const darkC = document.getElementById('dark-canvas');
+  const partC = document.getElementById('particles');
+  const introEl = document.getElementById('intro');
+  const menuEl = document.getElementById('menu');
+  const cursorEl = document.getElementById('cursor');
+  const cursorRing = document.getElementById('cursor-ring');
+
+  let W, H;
+  let mouseX, mouseY;
+  let hasMoved = false;
+  let phase = 'intro'; // intro | menu
+  let time = 0;
+  let raf;
+
+  const sCtx = sceneC.getContext('2d');
+  const dCtx = darkC.getContext('2d');
+  const pCtx = partC.getContext('2d');
+
+  function resize() {
+    W = window.innerWidth;
+    H = window.innerHeight;
+    sceneC.width = darkC.width = partC.width = W;
+    sceneC.height = darkC.height = partC.height = H;
+    mouseX = W / 2;
+    mouseY = H / 2;
+    buildTorches();
+  }
+
+  // === TORCHES ===
+  let torches = [];
+  function buildTorches() {
+    torches = [
+      { xr: 0.08, yr: 0.62, ph: 0 },
+      { xr: 0.28, yr: 0.58, ph: 1.3 },
+      { xr: 0.50, yr: 0.55, ph: 2.7 },
+      { xr: 0.72, yr: 0.57, ph: 0.8 },
+      { xr: 0.92, yr: 0.60, ph: 2.1 },
+    ].map(t => ({ ...t, flicker: 1 }));
+  }
+
+  // === PARTICLES ===
+  const particles = [];
+  function spawnParticle(tx, ty) {
+    particles.push({
+      x: tx + (Math.random()-0.5)*20,
+      y: ty - 10,
+      vx: (Math.random()-0.5)*0.4,
+      vy: -(0.3 + Math.random()*0.5),
+      life: 1,
+      decay: 0.008 + Math.random()*0.006,
+      size: 1.5 + Math.random()*2
+    });
+  }
+
+  // === STARS ===
+  const stars = Array.from({length:120}, () => ({
+    x: Math.random(),
+    y: Math.random()*0.45,
+    r: 0.4 + Math.random()*0.8,
+    blink: Math.random()*Math.PI*2
+  }));
+
+  // === TREES ===
+  function drawForest() {
+    const trees = [
+      { x: 0.04, base: 0.88, h: 0.44, w: 0.10, layers: 5 },
+      { x: 0.14, base: 0.85, h: 0.50, w: 0.12, layers: 5 },
+      { x: 0.26, base: 0.82, h: 0.55, w: 0.13, layers: 6 },
+      { x: 0.38, base: 0.80, h: 0.58, w: 0.14, layers: 6 },
+      { x: 0.50, base: 0.78, h: 0.62, w: 0.15, layers: 6 },
+      { x: 0.62, base: 0.80, h: 0.56, w: 0.13, layers: 6 },
+      { x: 0.74, base: 0.82, h: 0.52, w: 0.12, layers: 5 },
+      { x: 0.86, base: 0.84, h: 0.48, w: 0.11, layers: 5 },
+      { x: 0.96, base: 0.86, h: 0.42, w: 0.10, layers: 5 },
+      { x: 0.10, base: 0.92, h: 0.28, w: 0.07, layers: 4 },
+      { x: 0.33, base: 0.90, h: 0.30, w: 0.07, layers: 4 },
+      { x: 0.58, base: 0.90, h: 0.26, w: 0.06, layers: 4 },
+      { x: 0.80, base: 0.91, h: 0.29, w: 0.07, layers: 4 },
+    ];
+
+    trees.forEach(t => {
+      const tx = t.x * W;
+      const by = t.base * H;
+      const th = t.h * H;
+      const tw = t.w * W;
+      sCtx.fillStyle = '#06100302';
+      sCtx.fillRect(tx-4, by, 8, 30);
+      for(let i=0; i<t.layers; i++) {
+        const ly = by - (th * (i / t.layers));
+        const lw = tw * (1 - (i / t.layers) * 0.55);
+        const lh = th * 0.30;
+        sCtx.fillStyle = i === t.layers-1
+          ? '#081505'
+          : (i % 2 === 0 ? '#060f04' : '#071205');
+        sCtx.beginPath();
+        sCtx.moveTo(tx, ly - lh);
+        sCtx.lineTo(tx + lw, ly);
+        sCtx.lineTo(tx - lw, ly);
+        sCtx.closePath();
+        sCtx.fill();
+      }
+      sCtx.fillStyle = '#040a03';
+      sCtx.fillRect(tx-3, by, 6, 25);
+    });
+  }
+
+  // === TORCH DRAW ===
+  function drawTorchFlame(t) {
+    const tx = t.xr * W;
+    const ty = t.yr * H;
+    const f = t.flicker;
+    const poleH = H * 0.08;
+
+    sCtx.fillStyle = '#2a1a08';
+    sCtx.fillRect(tx-4, ty + 12, 8, poleH);
+    sCtx.fillStyle = '#150e04';
+    sCtx.beginPath();
+    sCtx.moveTo(tx-10, ty+12);
+    sCtx.lineTo(tx+10, ty+12);
+    sCtx.lineTo(tx+8, ty+22);
+    sCtx.lineTo(tx-8, ty+22);
+    sCtx.closePath();
+    sCtx.fill();
+
+    sCtx.fillStyle = `rgba(220,80,10,${f*0.85})`;
+    sCtx.beginPath();
+    sCtx.ellipse(tx, ty, 7*f, 13*f, 0, 0, Math.PI*2);
+    sCtx.fill();
+
+    sCtx.fillStyle = `rgba(255,150,20,${f*0.8})`;
+    sCtx.beginPath();
+    sCtx.ellipse(tx, ty-4, 5*f, 9*f, 0, 0, Math.PI*2);
+    sCtx.fill();
+
+    sCtx.fillStyle = `rgba(255,210,60,${f*0.7})`;
+    sCtx.beginPath();
+    sCtx.ellipse(tx, ty-8, 3*f, 5.5*f, 0, 0, Math.PI*2);
+    sCtx.fill();
+
+    sCtx.fillStyle = `rgba(255,245,220,${f*0.5})`;
+    sCtx.beginPath();
+    sCtx.ellipse(tx, ty-11, 1.5*f, 3*f, 0, 0, Math.PI*2);
+    sCtx.fill();
+
+    if(Math.random() < 0.12) spawnParticle(tx, ty);
+    t.flicker = 0.72 + 0.28 * Math.abs(Math.sin(time*9 + t.ph) + 0.3*Math.sin(time*17 + t.ph*3));
+  }
+
+  // === SCENE ===
+  function drawScene() {
+    sCtx.clearRect(0,0,W,H);
+
+    const sky = sCtx.createLinearGradient(0,0,0,H*0.6);
+    sky.addColorStop(0, '#020502');
+    sky.addColorStop(0.5, '#04080304');
+    sky.addColorStop(1, '#06100404');
+    sCtx.fillStyle = sky;
+    sCtx.fillRect(0,0,W,H);
+
+    stars.forEach(s => {
+      const bright = 0.3 + 0.4*Math.abs(Math.sin(time*0.7 + s.blink));
+      sCtx.beginPath();
+      sCtx.arc(s.x*W, s.y*H, s.r, 0, Math.PI*2);
+      sCtx.fillStyle = `rgba(230,210,160,${bright*0.7})`;
+      sCtx.fill();
+    });
+
+    const moon = { x: W*0.82, y: H*0.12, r: W*0.028 };
+    sCtx.fillStyle = '#e8ddb0';
+    sCtx.beginPath();
+    sCtx.arc(moon.x, moon.y, moon.r, 0, Math.PI*2);
+    sCtx.fill();
+    sCtx.fillStyle = '#d8cc9c';
+    sCtx.beginPath();
+    sCtx.arc(moon.x-moon.r*0.2, moon.y-moon.r*0.1, moon.r*0.7, 0, Math.PI*2);
+    sCtx.fill();
+    sCtx.fillStyle = '#ece0b0';
+    sCtx.globalAlpha = 0.12;
+    sCtx.beginPath();
+    sCtx.arc(moon.x, moon.y, moon.r*2.5, 0, Math.PI*2);
+    sCtx.fill();
+    sCtx.globalAlpha = 1;
+
+    sCtx.fillStyle = '#03080204';
+    sCtx.fillRect(0, H*0.55, W, H*0.45);
+    sCtx.fillStyle = '#020601';
+    sCtx.fillRect(0, H*0.72, W, H*0.28);
+
+    for(let i=0;i<4;i++){
+      const gy = H*(0.68 + i*0.08);
+      const gCol = sCtx.createLinearGradient(0, gy, 0, gy+H*0.06);
+      gCol.addColorStop(0, `rgba(8,20,4,${0.3-i*0.05})`);
+      gCol.addColorStop(1, 'transparent');
+      sCtx.fillStyle = gCol;
+      sCtx.fillRect(0, gy, W, H*0.1);
+    }
+
+    drawForest();
+    torches.forEach(drawTorchFlame);
+  }
+
+  // === PARTICLES ===
+  function drawParticles() {
+    pCtx.clearRect(0,0,W,H);
+    for(let i=particles.length-1;i>=0;i--){
+      const p = particles[i];
+      p.x += p.vx; p.y += p.vy; p.life -= p.decay;
+      if(p.life <= 0){ particles.splice(i,1); continue; }
+      pCtx.globalAlpha = p.life * 0.6;
+      pCtx.fillStyle = `hsl(${30+20*p.life},90%,${60+20*p.life}%)`;
+      pCtx.beginPath();
+      pCtx.arc(p.x, p.y, p.size*p.life, 0, Math.PI*2);
+      pCtx.fill();
+    }
+    pCtx.globalAlpha = 1;
+  }
+
+  // === DARKNESS ===
+  function drawDarkness() {
+    dCtx.clearRect(0,0,W,H);
+    dCtx.fillStyle = 'rgba(0,0,0,0.92)';
+    dCtx.fillRect(0,0,W,H);
+    dCtx.globalCompositeOperation = 'destination-out';
+
+    const mr = Math.min(W,H)*0.16;
+    const mg = dCtx.createRadialGradient(mouseX,mouseY,0,mouseX,mouseY,mr);
+    mg.addColorStop(0,   'rgba(0,0,0,0.98)');
+    mg.addColorStop(0.35,'rgba(0,0,0,0.85)');
+    mg.addColorStop(0.7, 'rgba(0,0,0,0.4)');
+    mg.addColorStop(1,   'rgba(0,0,0,0)');
+    dCtx.fillStyle = mg;
+    dCtx.beginPath();
+    dCtx.arc(mouseX,mouseY,mr,0,Math.PI*2);
+    dCtx.fill();
+
+    torches.forEach(t => {
+      const tx = t.xr*W, ty = t.yr*H;
+      const r = Math.min(W,H) * (0.12 + 0.04*t.flicker);
+      const tg = dCtx.createRadialGradient(tx,ty,0,tx,ty,r);
+      tg.addColorStop(0,   `rgba(0,0,0,${0.8-0.4*t.flicker})`);
+      tg.addColorStop(0.4, `rgba(0,0,0,${0.5-0.25*t.flicker})`);
+      tg.addColorStop(0.8, `rgba(0,0,0,0.15)`);
+      tg.addColorStop(1,   'rgba(0,0,0,0)');
+      dCtx.fillStyle = tg;
+      dCtx.beginPath();
+      dCtx.arc(tx,ty,r,0,Math.PI*2);
+      dCtx.fill();
+    });
+
+    dCtx.globalCompositeOperation = 'source-over';
+  }
+
+  // === MAIN LOOP ===
+  function loop() {
+    time += 0.016;
+    drawScene();
+    drawParticles();
+    drawDarkness();
+    raf = requestAnimationFrame(loop);
+  }
+
+  // === MOUSE ===
+  document.addEventListener('mousemove', e => {
+    mouseX = e.clientX;
+    mouseY = e.clientY;
+    cursorEl.style.left = mouseX + 'px';
+    cursorEl.style.top  = mouseY + 'px';
+    cursorRing.style.left = mouseX + 'px';
+    cursorRing.style.top  = mouseY + 'px';
+
+    if(!hasMoved && phase === 'intro') {
+      hasMoved = true;
+      phase = 'transition';
+      setTimeout(() => {
+        introEl.classList.add('fade-out');
+        menuEl.classList.add('visible');
+        phase = 'menu';
+      }, 600);
+    }
+  });
+
+  document.querySelectorAll('.menu-btn, .credits-back').forEach(btn => {
+    btn.addEventListener('mouseenter', () => {
+      cursorRing.style.width  = '44px';
+      cursorRing.style.height = '44px';
+    });
+    btn.addEventListener('mouseleave', () => {
+      cursorRing.style.width  = '28px';
+      cursorRing.style.height = '28px';
+    });
+  });
+
+  // === CREDITS ===
+  const creditsEl   = document.getElementById('credits');
+  const creditsC    = document.getElementById('credits-canvas');
+  const cCtx        = creditsC.getContext('2d');
+  const btnCredits  = document.getElementById('btn-credits');
+  const btnBack     = document.getElementById('btn-back');
+
+  // Animated particles for credits bg
+  const cParticles = [];
+  let creditsTime = 0;
+  let creditsRaf = null;
+  let creditsActive = false;
+
+  function resizeCredits() {
+    creditsC.width  = window.innerWidth;
+    creditsC.height = window.innerHeight;
+  }
+  resizeCredits();
+  window.addEventListener('resize', resizeCredits);
+
+  function spawnCreditParticle() {
+    const CW = creditsC.width, CH = creditsC.height;
+    cParticles.push({
+      x: Math.random() * CW,
+      y: CH + 10,
+      vx: (Math.random() - 0.5) * 0.6,
+      vy: -(0.4 + Math.random() * 0.8),
+      life: 1,
+      decay: 0.003 + Math.random() * 0.004,
+      size: 1 + Math.random() * 2.5,
+      hue: 30 + Math.random() * 30
+    });
+  }
+
+  // Orbiting dots on emblem
+  const orbitDots = Array.from({length: 8}, (_, i) => ({
+    angle: (i / 8) * Math.PI * 2,
+    speed: 0.008 + Math.random() * 0.005,
+    r: 66 + Math.random() * 6,
+    size: 1 + Math.random()
+  }));
+
+  function drawCreditsCanvas() {
+    const CW = creditsC.width, CH = creditsC.height;
+    cCtx.clearRect(0, 0, CW, CH);
+
+    // Deep background
+    cCtx.fillStyle = '#020301';
+    cCtx.fillRect(0, 0, CW, CH);
+
+    // Subtle radial glow at center
+    const cx = CW / 2, cy = CH * 0.42;
+    const grd = cCtx.createRadialGradient(cx, cy, 0, cx, cy, Math.min(CW, CH) * 0.45);
+    grd.addColorStop(0,   'rgba(140,90,10,0.08)');
+    grd.addColorStop(0.5, 'rgba(80,50,5,0.04)');
+    grd.addColorStop(1,   'rgba(0,0,0,0)');
+    cCtx.fillStyle = grd;
+    cCtx.fillRect(0, 0, CW, CH);
+
+    // Horizontal faint lines
+    for(let i = 0; i < 5; i++) {
+      const ly = cy - 120 + i * 60;
+      cCtx.strokeStyle = `rgba(200,140,40,${0.02 + 0.01 * Math.sin(creditsTime + i)})`;
+      cCtx.lineWidth = 0.5;
+      cCtx.beginPath();
+      cCtx.moveTo(0, ly);
+      cCtx.lineTo(CW, ly);
+      cCtx.stroke();
+    }
+
+    // Orbiting dots around emblem center
+    const ex = CW / 2, ey = CH * 0.36;
+    orbitDots.forEach(d => {
+      d.angle += d.speed;
+      const dx = ex + Math.cos(d.angle) * d.r;
+      const dy = ey + Math.sin(d.angle) * d.r * 0.4;
+      const alpha = 0.3 + 0.3 * Math.sin(creditsTime * 2 + d.angle);
+      cCtx.beginPath();
+      cCtx.arc(dx, dy, d.size, 0, Math.PI * 2);
+      cCtx.fillStyle = `rgba(200,150,40,${alpha})`;
+      cCtx.fill();
+    });
+
+    // Rising embers
+    if(Math.random() < 0.25) spawnCreditParticle();
+    for(let i = cParticles.length - 1; i >= 0; i--) {
+      const p = cParticles[i];
+      p.x += p.vx; p.y += p.vy; p.life -= p.decay;
+      if(p.life <= 0) { cParticles.splice(i, 1); continue; }
+      cCtx.globalAlpha = p.life * 0.5;
+      cCtx.fillStyle = `hsl(${p.hue}, 85%, ${55 + 20 * p.life}%)`;
+      cCtx.beginPath();
+      cCtx.arc(p.x, p.y, p.size * p.life, 0, Math.PI * 2);
+      cCtx.fill();
+    }
+    cCtx.globalAlpha = 1;
+
+    // Scanline overlay
+    cCtx.fillStyle = 'rgba(0,0,0,0.04)';
+    for(let y = 0; y < CH; y += 4) {
+      cCtx.fillRect(0, y, CW, 1);
+    }
+
+    creditsTime += 0.016;
+  }
+
+  function creditsLoop() {
+    if(!creditsActive) return;
+    drawCreditsCanvas();
+    creditsRaf = requestAnimationFrame(creditsLoop);
+  }
+
+  function triggerCreditsAnimation() {
+    const els = {
+      emblem:   document.getElementById('emblem'),
+      ering1:   document.getElementById('ering1'),
+      ering2:   document.getElementById('ering2'),
+      eglow:    document.getElementById('eglow'),
+      escan:    document.getElementById('escan'),
+      eletter:  document.getElementById('eletter'),
+      cstudio:  document.getElementById('cstudio'),
+      ctagline: document.getElementById('ctagline'),
+      cornament:document.getElementById('cornament'),
+      clist:    document.getElementById('clist'),
+      cfooter:  document.getElementById('cfooter'),
+    };
+    // Reset
+    Object.values(els).forEach(el => el.classList.remove('play'));
+    void els.emblem.offsetWidth; // reflow
+    // Trigger
+    Object.values(els).forEach(el => el.classList.add('play'));
+  }
+
+  btnCredits.addEventListener('click', () => {
+    creditsEl.classList.add('active');
+    creditsActive = true;
+    creditsRaf = requestAnimationFrame(creditsLoop);
+    setTimeout(triggerCreditsAnimation, 100);
+  });
+
+  btnBack.addEventListener('click', () => {
+    creditsEl.classList.remove('active');
+    creditsActive = false;
+    if(creditsRaf) cancelAnimationFrame(creditsRaf);
+  });
+
+
+  // ===================== BOUTIQUE =====================
+  const shopEl       = document.getElementById('shop');
+  const btnShopOpen  = document.getElementById('btn-boutique');
+  const btnShopBack  = document.getElementById('btn-shop-back');
+  const shopGrid     = document.getElementById('shop-grid');
+  const shopModal    = document.getElementById('shop-modal');
+  const modalConfirm = document.getElementById('modal-confirm');
+  const modalCancel  = document.getElementById('modal-cancel');
+  const shopToast    = document.getElementById('shop-toast');
+  const balDisplay   = document.getElementById('bal-display');
+
+  let robuxBalance = 1200;
+  let pendingItem  = null;
+  let activeTab    = 'all';
+
+  const ITEMS = [
+    { id:1,  name: 'Hache de survie',      desc: 'Coupe le bois deux fois plus vite.',          icon: '🪓', price: 0,   cat: 'outils',      owned: false, badge: 'new'     },
+    { id:2,  name: 'Épée en fer',          desc: 'Forée dans les entrailles de la montagne.',   icon: '⚔️', price: 150, cat: 'armes',       owned: false, badge: 'popular' },
+    { id:3,  name: 'Arc sylvain',          desc: 'Silence et précision au cœur des bois.',      icon: '🏹', price: 220, cat: 'armes',       owned: false, badge: ''        },
+    { id:4,  name: 'Torche runique',       desc: 'Brûle trois fois plus longtemps.',            icon: '🔦', price: 80,  cat: 'outils',      owned: true,  badge: 'owned'   },
+    { id:5,  name: 'Cape de brume',        desc: 'Rend votre silhouette plus discrète.',        icon: '🧥', price: 300, cat: 'cosmétiques', owned: false, badge: 'new'     },
+    { id:6,  name: 'Casque du chasseur',   desc: 'Protection légère, vision améliorée.',        icon: '🪖', price: 180, cat: 'armures',     owned: false, badge: ''        },
+    { id:7,  name: 'Bouclier en bois',     desc: 'Solide mais léger, parfait pour débuter.',    icon: '🛡️', price: 120, cat: 'armures',     owned: false, badge: ''        },
+    { id:8,  name: 'Fiole de soins',       desc: 'Régénère 50 points de vie instantanément.',  icon: '🧪', price: 60,  cat: 'outils',      owned: false, badge: 'sale'    },
+    { id:9,  name: 'Dague en obsidienne',  desc: 'Rapide et silencieuse. Parfaite pour chasser.', icon: '🔪', price: 250, cat: 'armes',     owned: false, badge: ''        },
+    { id:10, name: 'Chapeau de druide',    desc: 'Dégage une aura mystique dans la forêt.',     icon: '🎩', price: 200, cat: 'cosmétiques', owned: false, badge: ''        },
+    { id:11, name: 'Bottes de sentier',    desc: 'Déplacement silencieux sur tous terrains.',   icon: '👢', price: 140, cat: 'cosmétiques', owned: false, badge: ''        },
+    { id:12, name: 'Lanterne ancienne',    desc: 'Éclaire un rayon bien plus grand.',           icon: '🪔', price: 90,  cat: 'outils',      owned: false, badge: ''        },
+  ];
+
+  function fmtNum(n) { return n.toLocaleString('fr-FR'); }
+
+  function renderGrid(cat) {
+    const filtered = cat === 'all' ? ITEMS : ITEMS.filter(i => i.cat === cat);
+    shopGrid.innerHTML = '';
+    filtered.forEach((item, idx) => {
+      const card = document.createElement('div');
+      card.className = 'shop-card' + (item.owned ? ' owned' : '');
+      card.style.animationDelay = (idx * 0.05) + 's';
+
+      let badgeHtml = '';
+      if(item.owned)        badgeHtml = '<span class="card-badge badge-owned">Possédé</span>';
+      else if(item.badge === 'new')     badgeHtml = '<span class="card-badge badge-new">Nouveau</span>';
+      else if(item.badge === 'popular') badgeHtml = '<span class="card-badge badge-popular">Populaire</span>';
+      else if(item.badge === 'sale')    badgeHtml = '<span class="card-badge badge-sale">Promo</span>';
+
+      const priceHtml = item.price === 0
+        ? '<span class="price-free">Gratuit</span>'
+        : `<div class="card-price"><div class="price-icon">R$</div><span class="price-val">${fmtNum(item.price)}</span></div>`;
+
+      const btnHtml = item.owned
+        ? '<button class="buy-btn is-owned">Équipé</button>'
+        : `<button class="buy-btn can-buy" data-id="${item.id}">Acheter</button>`;
+
+      card.innerHTML = `
+        ${badgeHtml}
+        <div class="card-preview">
+          <div class="card-preview-glow"></div>
+          <div class="card-preview-icon">${item.icon}</div>
+        </div>
+        <div class="card-info">
+          <div class="card-name">${item.name}</div>
+          <div class="card-desc">${item.desc}</div>
+          <div class="card-footer">${priceHtml}${btnHtml}</div>
+        </div>`;
+
+      card.querySelectorAll('button').forEach(b => {
+        b.addEventListener('mouseenter', () => { cursorRing.style.width='40px'; cursorRing.style.height='40px'; });
+        b.addEventListener('mouseleave', () => { cursorRing.style.width='28px'; cursorRing.style.height='28px'; });
+        b.addEventListener('click', e => {
+          const id = parseInt(e.target.dataset.id);
+          const it = ITEMS.find(x => x.id === id);
+          if(!it || it.owned) return;
+          if(it.price === 0) { purchaseItem(it); return; }
+          pendingItem = it;
+          document.getElementById('modal-icon').textContent  = it.icon;
+          document.getElementById('modal-name').textContent  = it.name;
+          document.getElementById('modal-desc').textContent  = it.desc;
+          document.getElementById('modal-price').textContent = fmtNum(it.price);
+          shopModal.classList.add('open');
+        });
+      });
+      shopGrid.appendChild(card);
+    });
+  }
+
+  function purchaseItem(item) {
+    if(item.price > 0 && robuxBalance < item.price) {
+      showToast('Robux insuffisants !', false);
+      return;
+    }
+    robuxBalance -= item.price;
+    item.owned = true;
+    item.badge = 'owned';
+    balDisplay.textContent = fmtNum(robuxBalance);
+    renderGrid(activeTab);
+    showToast('✓  ' + item.name + ' acheté !', true);
+  }
+
+  function showToast(msg, ok) {
+    shopToast.textContent = msg;
+    shopToast.style.background = ok ? 'rgba(40,100,40,0.92)' : 'rgba(140,40,20,0.92)';
+    shopToast.style.borderColor = ok ? 'rgba(80,180,80,0.4)' : 'rgba(200,80,40,0.4)';
+    shopToast.style.color = ok ? '#a0e8a0' : '#f0a080';
+    shopToast.classList.add('show');
+    setTimeout(() => shopToast.classList.remove('show'), 2200);
+  }
+
+  // Tab switching
+  document.querySelectorAll('.shop-tab').forEach(tab => {
+    tab.addEventListener('mouseenter', () => { cursorRing.style.width='40px'; cursorRing.style.height='40px'; });
+    tab.addEventListener('mouseleave', () => { cursorRing.style.width='28px'; cursorRing.style.height='28px'; });
+    tab.addEventListener('click', () => {
+      document.querySelectorAll('.shop-tab').forEach(t => t.classList.remove('active'));
+      tab.classList.add('active');
+      activeTab = tab.dataset.cat;
+      renderGrid(activeTab);
+    });
+  });
+
+  modalConfirm.addEventListener('click', () => {
+    if(pendingItem) { purchaseItem(pendingItem); pendingItem = null; }
+    shopModal.classList.remove('open');
+  });
+  modalCancel.addEventListener('click', () => {
+    pendingItem = null;
+    shopModal.classList.remove('open');
+  });
+  [modalConfirm, modalCancel].forEach(b => {
+    b.addEventListener('mouseenter', () => { cursorRing.style.width='40px'; cursorRing.style.height='40px'; });
+    b.addEventListener('mouseleave', () => { cursorRing.style.width='28px'; cursorRing.style.height='28px'; });
+  });
+
+  // Open / Close
+  document.querySelector('[data-shop]') && document.querySelector('[data-shop]').addEventListener('click', openShop);
+
+  function openShop() {
+    shopEl.classList.add('active');
+    renderGrid('all');
+  }
+  window.openShop = openShop;
+  btnShopBack.addEventListener('click', () => shopEl.classList.remove('active'));
+  btnShopBack.addEventListener('mouseenter', () => { cursorRing.style.width='40px'; cursorRing.style.height='40px'; });
+  btnShopBack.addEventListener('mouseleave', () => { cursorRing.style.width='28px'; cursorRing.style.height='28px'; });
+
+  window.addEventListener('resize', resize);
+  resize();
+  loop();
+})();
+</script>
+</body>
+</html>
